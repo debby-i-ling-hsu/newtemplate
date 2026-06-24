@@ -1,0 +1,45 @@
+# 伺服器上的 Caddy 反向代理範例（此檔不屬於應用 repo，放在伺服器的 caddy 設定中）。
+# Caddy 容器需與應用接同一個 external network（fullstackapp_net），才能用服務名反代 web:8000。
+
+{
+    email {$ACME_EMAIL}
+}
+
+# 用 Cloudflare DNS challenge 簽憑證（需 CLOUDFLARE_API_TOKEN 環境變數）
+(cloudflare_tls) {
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
+}
+
+# 共用安全 header
+(common_security) {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+    }
+}
+
+example.com {
+    import cloudflare_tls
+    import common_security
+    encode zstd gzip
+
+    # 健康檢查走便宜的 live 端點
+    @health path /healthz/live/
+    handle @health {
+        reverse_proxy web:8000
+    }
+
+    handle {
+        reverse_proxy web:8000
+    }
+}
+
+# www 轉址到主網域
+www.example.com {
+    import cloudflare_tls
+    redir https://example.com{uri} permanent
+}

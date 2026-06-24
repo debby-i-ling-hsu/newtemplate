@@ -1,0 +1,9 @@
+FROM alpine:3.20
+
+# 排程備份 sidecar：需要 docker CLI + compose 外掛，才能對同一組 compose 的 db
+# 容器執行 pg_dump（透過掛載進來的 docker socket）。
+RUN apk add --no-cache docker-cli docker-cli-compose
+
+WORKDIR /workspace
+
+ENTRYPOINT ["sh", "/workspace/backend/ops/db_backup.sh"]

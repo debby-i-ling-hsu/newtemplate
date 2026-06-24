@@ -1,0 +1,203 @@
+# Stage：類生產。用建置好的 image（不掛載原始碼）、開健康檢查、有資源上限。
+# 由 scripts/deploy.sh 驅動（make stage）。
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-environment: &app-environment
+  DJANGO_ENV: stage
+  DJANGO_SETTINGS_MODULE: config.settings.stage
+  PYTHONPATH: /app/backend
+
+x-worker: &worker
+  image: fullstackapp-worker:stage
+  build:
+    context: .
+    dockerfile: dockerfiles/Dockerfile.web
+    target: celery-worker
+  restart: unless-stopped
+  logging: *default-logging
+  env_file:
+    - ./backend/env/.env.stage
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  volumes:
+    - ./backend/logs:/app/backend/logs
+  networks:
+    - fullstackapp_net
+
+services:
+  web:
+    image: fullstackapp-web:stage
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.web
+      target: web
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: web
+      DJANGO_COLLECTSTATIC_ON_START: "1"
+      UVICORN_WORKERS: "2"
+    env_file:
+      - ./backend/env/.env.stage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/logs:/app/backend/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz/ready/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768m
+    networks:
+      - fullstackapp_net
+
+  worker-default:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-default
+      CELERY_WORKER_NAME: worker-default
+      CELERY_WORKER_QUEUES: default
+      CELERY_WORKER_CONCURRENCY: "2"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  worker-maintenance:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-maintenance
+      CELERY_WORKER_NAME: worker-maintenance
+      CELERY_WORKER_QUEUES: maintenance
+      CELERY_WORKER_CONCURRENCY: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384m
+
+  worker-long-running:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-long-running
+      CELERY_WORKER_NAME: worker-long-running
+      CELERY_WORKER_QUEUES: long_running
+      CELERY_WORKER_CONCURRENCY: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  beat:
+    image: fullstackapp-beat:stage
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.web
+      target: celery-beat
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: beat
+    env_file:
+      - ./backend/env/.env.stage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/logs:/app/backend/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 256m
+    networks:
+      - fullstackapp_net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_stage_data:/data
+    networks:
+      - fullstackapp_net
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - ./backend/env/.env.stage
+    environment:
+      POSTGRES_DB: fullstackapp
+      POSTGRES_USER: fullstackapp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_stage_data:/var/lib/postgresql/data
+    networks:
+      - fullstackapp_net
+
+  # 排程備份 sidecar（stage 鏡像 prod）：crond 呼叫 scripts/db.sh dump stage + prune。
+  db-backup:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.db-backup
+    image: fullstackapp-db-backup:stage
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      BACKUP_ENV: stage
+      BACKUP_SCHEDULE: "0 3 * * *"
+      BACKUP_KEEP: "7"
+      COMPOSE_PROJECT_NAME: fullstackapp
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - fullstackapp_net
+
+volumes:
+  postgres_stage_data:
+  redis_stage_data:
+
+networks:
+  fullstackapp_net:
+    driver: bridge

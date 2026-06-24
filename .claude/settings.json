@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker ps:*)",
+      "Bash(npm --prefix frontend run lint)",
+      "Bash(npm --prefix frontend run test)",
+      "Bash(npm --prefix frontend run build)",
+      "Bash(npm --prefix frontend install)",
+      "Bash(python manage.py test:*)",
+      "Bash(python manage.py check:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(python manage.py migrate:*)",
+      "Bash(ruff check:*)",
+      "Bash(black:*)",
+      "Bash(curl -fsS http://127.0.0.1:8000/healthz/*)"
+    ],
+    "deny": [
+      "Read(./backend/env/.env.dev)",
+      "Read(./backend/env/.env.stage)",
+      "Read(./backend/env/.env.prod)",
+      "Read(./backend/env/.env.local)",
+      "Bash(make dev-restore:*)",
+      "Bash(make stage-restore:*)",
+      "Bash(make prod-restore:*)",
+      "Bash(./scripts/db.sh restore:*)",
+      "Bash(scripts/db.sh restore:*)"
+    ]
+  }
+}

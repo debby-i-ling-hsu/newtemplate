@@ -1,0 +1,23 @@
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = '''
+/(
+  migrations
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# E/F=pyflakes+pycodestyle, I=isort, UP=pyupgrade, B=bugbear, DJ=flake8-django
+select = ["E", "F", "I", "UP", "B", "DJ"]
+ignore = [
+    "E501",  # 行長交給 black 管
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/settings/*.py" = ["F403", "F405"]  # settings 允許 star-import 覆寫

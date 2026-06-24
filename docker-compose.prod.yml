@@ -1,0 +1,220 @@
+# Prod：建置好的 image、嚴格資源上限、每日 DB 備份 sidecar、外部網路（由 Caddy 連入）。
+# 由 scripts/deploy.sh 驅動（make prod）。
+#
+# 注意：fullstackapp_net 設為 external，須先建立：
+#   docker network create fullstackapp_net
+# 伺服器上的 Caddy 也接到同一個 external network，以服務名反代 web:8000。
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-app-environment: &app-environment
+  DJANGO_ENV: prod
+  DJANGO_SETTINGS_MODULE: config.settings.prod
+  PYTHONPATH: /app/backend
+
+x-worker: &worker
+  image: fullstackapp-worker:prod
+  build:
+    context: .
+    dockerfile: dockerfiles/Dockerfile.web
+    target: celery-worker
+  restart: unless-stopped
+  logging: *default-logging
+  env_file:
+    - ./backend/env/.env.prod
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  volumes:
+    - ./backend/logs:/app/backend/logs
+  networks:
+    - fullstackapp_net
+
+services:
+  web:
+    image: fullstackapp-web:prod
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.web
+      target: web
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: web
+      DJANGO_COLLECTSTATIC_ON_START: "1"
+      UVICORN_WORKERS: "3"
+    env_file:
+      - ./backend/env/.env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/logs:/app/backend/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz/ready/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2048m
+    networks:
+      fullstackapp_net:
+        aliases:
+          - fullstackapp-web
+
+  worker-default:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-default
+      CELERY_WORKER_NAME: worker-default
+      CELERY_WORKER_QUEUES: default
+      CELERY_WORKER_CONCURRENCY: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768m
+
+  worker-maintenance:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-maintenance
+      CELERY_WORKER_NAME: worker-maintenance
+      CELERY_WORKER_QUEUES: maintenance
+      CELERY_WORKER_CONCURRENCY: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384m
+
+  worker-long-running:
+    <<: *worker
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: worker-long-running
+      CELERY_WORKER_NAME: worker-long-running
+      CELERY_WORKER_QUEUES: long_running
+      CELERY_WORKER_CONCURRENCY: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 1024m
+
+  beat:
+    image: fullstackapp-beat:prod
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.web
+      target: celery-beat
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      <<: *app-environment
+      LOG_SERVICE_NAME: beat
+    env_file:
+      - ./backend/env/.env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/logs:/app/backend/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 256m
+    networks:
+      - fullstackapp_net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "384mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      fullstackapp_net:
+        aliases:
+          - fullstackapp-redis
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - ./backend/env/.env.prod
+    environment:
+      POSTGRES_DB: fullstackapp
+      POSTGRES_USER: fullstackapp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2048m
+    networks:
+      fullstackapp_net:
+        aliases:
+          - fullstackapp-db
+
+  # 排程備份 sidecar：用 crond 依 BACKUP_SCHEDULE 呼叫 scripts/db.sh dump prod。
+  # 透過掛載的 docker socket 對 db 容器執行 pg_dump，並 prune 只留最近 BACKUP_KEEP 份。
+  # 備份檔寫到 host 的 ./backups/（repo 工作區掛在 /workspace）。
+  db-backup:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.db-backup
+    image: fullstackapp-db-backup:prod
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      BACKUP_ENV: prod
+      BACKUP_SCHEDULE: "0 3 * * *"
+      BACKUP_KEEP: "7"
+      COMPOSE_PROJECT_NAME: fullstackapp
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - fullstackapp_net
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+
+networks:
+  fullstackapp_net:
+    external: true

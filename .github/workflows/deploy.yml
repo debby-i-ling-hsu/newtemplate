@@ -1,0 +1,53 @@
+name: CD
+
+# 部署到伺服器：SSH 進主機，git pull 後跑 scripts/deploy.sh（內含健康閘門與自動回滾）。
+# 分支即環境（branch-per-environment）：
+#   - push 到 `stage` 分支 → 部署 stage（預設整合分支）
+#   - push 到 `prod`  分支 → 部署 prod
+#   - 手動 dispatch 可指定環境（救援用）
+#
+# 需要的 GitHub Secrets：
+#   DEPLOY_SSH_HOST, DEPLOY_SSH_USER, DEPLOY_SSH_KEY, DEPLOY_APP_PATH
+
+on:
+  push:
+    branches: [stage, prod]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 部署環境
+        required: true
+        default: stage
+        type: choice
+        options: [stage, prod]
+
+# 分支名稱與環境名稱一致，push 時 github.ref_name 即環境；dispatch 時用輸入值。
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || github.ref_name }}
+    steps:
+      - name: Resolve target environment
+        id: target
+        run: echo "env=${{ github.event.inputs.environment || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          TARGET_ENV: ${{ steps.target.outputs.env }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "set -e; cd '${{ secrets.DEPLOY_APP_PATH }}'; \
+             git fetch --all; git reset --hard origin/${TARGET_ENV}; \
+             ./scripts/deploy.sh ${TARGET_ENV}"

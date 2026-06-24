@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.7
+# 多階段建置：前端 build → Python 依賴 build → 精簡 runtime → web/worker/beat 三個 target。
+# 共用 runtime 層，三個 target 只差 entrypoint，確保跑的是同一份程式碼。
+
+FROM python:3.12-slim AS python-base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app/backend \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app/backend
+
+# ---- 前端建置 ----
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+COPY frontend /app/frontend
+RUN npm run build
+
+# ---- Python 依賴建置（含編譯工具，產出 venv）----
+FROM python-base AS builder
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m venv "$VIRTUAL_ENV"
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && pip install -r /tmp/requirements.txt
+
+# ---- 精簡 runtime（不含編譯工具）----
+FROM python-base AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /opt/venv /opt/venv
+COPY backend /app/backend
+RUN chmod +x /app/backend/entrypoints/*.sh
+EXPOSE 8000
+
+# ---- web（ASGI server，內含前端建置產物）----
+FROM runtime AS web
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+ENTRYPOINT ["/app/backend/entrypoints/entrypoint-web.sh"]
+
+# ---- celery worker ----
+FROM runtime AS celery-worker
+ENTRYPOINT ["/app/backend/entrypoints/entrypoint-celery-worker.sh"]
+
+# ---- celery beat ----
+FROM runtime AS celery-beat
+ENTRYPOINT ["/app/backend/entrypoints/entrypoint-celery-beat.sh"]

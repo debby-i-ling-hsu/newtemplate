@@ -1,0 +1,40 @@
+# ── 祕密：env 實檔一律不進版控，只保留 .example ──
+backend/env/.env.dev
+backend/env/.env.stage
+backend/env/.env.prod
+backend/env/.env.local
+!backend/env/.env.*.example
+
+# Python
+__pycache__/
+*.py[cod]
+backend/.venv/
+backend/db.sqlite3
+backend/staticfiles/
+backend/media/
+backend/logs/
+*.log
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Mobile / Expo
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/coverage/
+mobile/android/
+mobile/ios/
+
+# DB 備份（保留資料夾，內容不進版控）
+backups/*
+!backups/.gitkeep
+*.sql
+*.sql.gz
+
+# OS / 編輯器
+.DS_Store
+.idea/
+.vscode/
