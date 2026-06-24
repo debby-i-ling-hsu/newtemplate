@@ -33,5 +33,6 @@ make help           # 列出所有指令
 - 第一次 `make dev` 會自動把 `.env.dev.example` 複製成 `.env.dev`。
 - 後端格式/lint 用 `ruff` + `black`（設定在 `backend/pyproject.toml`），需先 `make backend-venv`。
 - 新增、刪除、修改使用者可見功能時，除非使用者明確限定只改單一介面，預設要同步檢查並更新 Web (`frontend/`) 與 Mobile (`mobile/`) 介面，且回報兩邊的處理結果。
+- 新增、刪除、修改使用者可見功能時，要在同一次變更更新 `docs/SPEC.md`（功能規格書，單一事實來源）；使用者轉述案主有新要求或修改時，也要主動先把需求寫進 SPEC 再實作。詳見 AGENTS.md 的「功能規格書」一節。
 - 案主/營運後台一律用 Django Admin + django-unfold；新增 model 時要同步完成繁體中文、RWD、非工程師可理解的 Admin UX。
 - stage/prod 的 Web SPA 由 Django 同網域提供；dev 也要保留 `http://localhost:8000/` 可訪問 Web，`http://localhost:3000/` 只作為 Vite/HMR 開發入口。

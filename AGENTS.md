@@ -48,6 +48,7 @@ mobile/
 7. **Web 入口一致**：stage/prod 由 Django web 服務同網域提供 Web SPA、`/api/v1/` 與 `/admin/`；dev 必須同時保留 Vite `:3000`（HMR）與 Django `:8000`（同網域模式）。Vite production build 的 asset base 是 `/static/`，不要改回 `/assets/`。
 8. **資料隔離**：屬於使用者的資料一定用 `request.user` 過濾，避免越權（範例見 `items`）。Web/Mobile UI 不決定 owner/role/price 等權威欄位。
 9. **設定全走環境變數**：程式碼不寫死祕密；新增設定要有預設值且可被 env 覆寫。Mobile API base URL 走 `EXPO_PUBLIC_API_BASE_URL`。
+10. **功能規格書同步**：本專案「目前提供哪些功能、怎麼運作」以 `docs/SPEC.md` 為單一事實來源。任何使用者可見功能的新增 / 修改 / 刪除都要在同一次變更更新 SPEC；使用者轉述案主新需求時也要主動先更新 SPEC。詳見「功能規格書」一節。
 
 ## 生產鐵則（「能跑」不等於「能上線」）
 
@@ -65,6 +66,7 @@ mobile/
 - 後端：照 `backend/items/` 複製 → 註冊到 `LOCAL_APPS` → 掛 `config/urls.py` → `make dev-makemigrations` → 寫測試。詳見 skill `add-backend-feature`。
 - 前端：照 `frontend/src/features/items/` 複製 → 在 `App.tsx` 加路由（需登入用 `<RequireAuth>`）→ 寫測試（MSW）。詳見 skill `add-frontend-page`。
 - Mobile：照 `mobile/src/features/items/` 複製 → API 走 `mobile/src/lib/api` → 畫面放 `Screen/Form` → 寫 Jest + React Native Testing Library 測試。詳見 skill `add-mobile-feature`。
+- 規格：動工前先讀 `docs/SPEC.md` 對焦既有行為；完工後把這次新增/修改/刪除的功能與變更歷史寫回 `docs/SPEC.md`。
 
 ## 功能變更的跨介面契約
 
@@ -75,6 +77,22 @@ Agent 在「新增 / 刪除 / 修改」任何使用者可見功能時，必須�
 - 刪除功能：刪後端 API 或資料欄位時，必須同步移除 Web 路由、導覽、測試 mock，以及 Mobile 入口、screen/form、測試，避免留下死連結或呼叫不存在的 endpoint。
 - 只改單一介面：只有使用者明確限定「只改 web」或「只改 mobile」時才可不改另一邊；回報時仍要標明另一邊未改，以及未改的原因。
 - 驗證：同時影響 Web/Mobile 時，必須跑前端檢查與 `make mobile-check`；若也動到後端，還要跑後端檢查/測試。
+
+## 功能規格書（`docs/SPEC.md`）— 隨功能同步維護的單一事實來源
+
+`docs/SPEC.md` 用非工程師也讀得懂的方式，記錄本專案**目前實際提供哪些使用者可見功能、每個功能怎麼運作**。它是與程式碼一起維護的活文件，目的有三：
+
+1. **防 VibeCoding 改壞**：動工前先讀 SPEC，掌握既有行為與邊界，才不會改 A 功能把 B 功能弄掛。
+2. **改壞好追蹤**：每次功能變更都在 SPEC 留紀錄，出問題時能對照「本來應該長怎樣」回推哪裡退化。
+3. **好跟案主說明**：SPEC 是非工程師看得懂的功能清單，可直接拿來對焦需求、驗收與報價。
+
+規則（強制）：
+
+- **功能改了就要同一次改 SPEC**：任何使用者可見功能的新增 / 修改 / 刪除——含資料模型、API 契約、畫面/表單、權限、狀態流程、驗收標準——都要在同一次變更更新 `docs/SPEC.md`。功能改了但 SPEC 沒更新 = 這次變更未完成。
+- **案主新需求要主動更新**：當使用者轉述「案主/客戶那邊有新要求或要修改」時，即使還沒開始寫程式，也要先把該需求反映進 `docs/SPEC.md`（在對應功能標 `狀態：待實作`），讓規格永遠是最新的對焦點，再進入實作。
+- **每筆變更寫進變更歷史**：在 SPEC 末的變更歷史表新增一列（日期、變更內容、對應功能、原因/來源、狀態）。
+- **牴觸處理**：SPEC 與程式碼實際行為牴觸時，以程式碼為準並立即修正 SPEC；SPEC 與案主新需求牴觸時，先更新 SPEC 再改碼。
+- **規範地位**：SPEC 描述「系統現在做什麼」，AGENTS.md / `docs/PRINCIPLES.md` 規範「你必須怎麼做」；工程規則衝突時仍以 AGENTS.md / PRINCIPLES.md 為準。
 
 ## 後台 UX 契約
 
@@ -93,6 +111,7 @@ Agent 在「新增 / 刪除 / 修改」任何使用者可見功能時，必須�
 - 前端有改：`npm --prefix frontend run lint && npm --prefix frontend run test && npm --prefix frontend run build`，且需要確認 production build 仍從 `/static/assets/...` 載入。
 - Mobile 有改：`npm --prefix mobile run lint && npm --prefix mobile run typecheck && npm --prefix mobile run test`
 - 系統有改（compose/Dockerfile/設定）：`make dev` 後 `make dev-health` 要綠燈、`docker compose ... ps` 服務全 healthy。
+- 功能有改：`docs/SPEC.md` 是否已同步該功能的最新行為，並在變更歷史補上這次的紀錄。
 
 **healthz 不是綠燈、測試沒過，就不算完成。** 回報時據實以告，不要宣稱通過。
 
@@ -104,6 +123,7 @@ Agent 在「新增 / 刪除 / 修改」任何使用者可見功能時，必須�
 - ❌ 繞過 `scripts/deploy.sh` 直接部署，或在閘門失敗時硬上。
 - ❌ 在 view/serializer 裡塞商業邏輯；在前端組件裡直接 `fetch`/`axios`。
 - ❌ 在 mobile screen/component 裡直接 `fetch`/`axios`，或把 JWT 存到 AsyncStorage / 明文檔案。
+- ❌ 改了使用者可見功能（model / API / 畫面 / 權限 / 狀態流），卻沒在同一次變更更新 `docs/SPEC.md`。
 - ❌ 未經確認就執行 `*-restore` 或其他對外、難復原的動作（部署、刪/覆蓋資料）。
 
 ## 部署

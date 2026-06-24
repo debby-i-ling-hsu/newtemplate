@@ -15,12 +15,14 @@
 
 ## 給非工程師
 
+- [SPEC.md](SPEC.md) — ★ 功能規格書：本專案目前提供哪些功能、怎麼運作。看得懂的功能清單，拿來對焦需求與驗收。
 - [PM_GUIDE.md](PM_GUIDE.md) — 用 AI Agent VibeCoding 的劇本（起站、加功能、驗收、上線）。
 
 ## 給 AI Agent
 
 - [../AGENTS.md](../AGENTS.md) — ★ 工程契約（唯一規範來源），任何 agent 動工前先讀。
 - [../CLAUDE.md](../CLAUDE.md) — Claude Code 專屬入口（skills、指令）。
+- [SPEC.md](SPEC.md) — ★ 功能規格書（單一事實來源）：動工前先讀對焦既有行為，功能改完 / 收到案主新需求要主動更新。維護規範見 AGENTS.md「功能規格書」一節。
 - [PRINCIPLES.md](PRINCIPLES.md) — ★ 生產原則鐵則 + 落地檢查清單（每加功能必讀）。
 - `.claude/skills/` — 把「加功能 / 驗證 / 部署 / 排查」固化成可觸發的技能。
 
@@ -63,6 +65,8 @@
 規範（衝突以此為準）
   AGENTS.md ............. 工程契約：技術棧、分層、流程、嚴禁事項
   PRINCIPLES.md ........ 生產鐵則 + 檢查清單
+活文件（隨功能同步維護）
+  SPEC.md .............. 功能規格書：系統現在提供哪些功能、怎麼運作（防改壞 / 好追蹤 / 好對客戶）
 說明（協助理解，不得牴觸規範）
   ARCHITECTURE.md ...... 為什麼這樣設計（樞紐，連向各深度頁）
   BACKEND / CELERY / FRONTEND / MOBILE / INFRASTRUCTURE / ADMIN / SECURITY .. 怎麼運作
