@@ -81,6 +81,7 @@ docs/      架構 / PM 指南 / 部署
 
 完整索引見 **[docs/README.md](docs/README.md)（文件地圖）**。最常用的入口：
 
+- **功能規格** → [docs/SPEC.md](docs/SPEC.md)（目前提供哪些功能、怎麼運作；對焦需求與驗收、防改壞）
 - **非工程師** → [docs/PM_GUIDE.md](docs/PM_GUIDE.md)（用 AI Agent 加功能的劇本）
 - **AI Agent** → [AGENTS.md](AGENTS.md)（工程契約，唯一規範來源）
 - **工程師入門** → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)（環境、Lint 工具鏈、指令、CI）→ [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（架構與設計理由）→ [docs/PRINCIPLES.md](docs/PRINCIPLES.md)（生產鐵則）
