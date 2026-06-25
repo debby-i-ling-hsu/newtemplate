@@ -13,3 +13,29 @@ class IsOwner(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return getattr(obj, "owner_id", None) == getattr(request.user, "id", None)
+
+
+class IsCustomer(permissions.BasePermission):
+    """只有客戶角色能存取（客戶下單、評分等端點）。"""
+
+    message = "此功能僅限客戶使用。"
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and getattr(request.user, "role", None) == "customer"
+        )
+
+
+class IsStaff(permissions.BasePermission):
+    """只有業務角色能存取（派工、完工回報、班表等端點）。"""
+
+    message = "此功能僅限業務使用。"
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and getattr(request.user, "role", None) == "technician"
+        )

@@ -1,66 +1,56 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
-import { z } from "zod";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { Button } from "@/components/Button";
 import { TextField } from "@/components/TextField";
-import { login, register } from "@/features/auth/api";
-
-const authSchema = z.object({
-  username: z.string().min(1, "請輸入帳號"),
-  password: z.string().min(1, "請輸入密碼"),
-  email: z.string(),
-});
-
-const registerSchema = authSchema.extend({
-  email: z.string().email("請輸入有效 email"),
-  password: z.string().min(8, "密碼至少 8 碼"),
-});
-
-type AuthMode = "login" | "register";
-type AuthFormValues = z.infer<typeof authSchema>;
+import { requestOtp, verifyOtp } from "@/features/auth/api";
 
 interface AuthScreenProps {
   onAuthenticated: () => void;
 }
 
 export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<AuthFormValues>({
-    defaultValues: { email: "", password: "", username: "" },
-    resolver: zodResolver(authSchema),
-  });
+  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("000000");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function onSubmit(values: AuthFormValues) {
-    setSubmitError(null);
+  async function sendOtp() {
+    if (!phone.trim()) {
+      setError("請輸入手機號碼");
+      return;
+    }
+    setError(null);
+    setLoading(true);
     try {
-      if (mode === "register") {
-        const parsed = registerSchema.safeParse(values);
-        if (!parsed.success) {
-          setSubmitError(parsed.error.issues[0]?.message ?? "註冊資料格式不正確。");
-          return;
-        }
-        await register(parsed.data);
-      }
-      await login(values.username, values.password);
-      onAuthenticated();
+      await requestOtp(phone.trim());
+      setStep("code");
     } catch {
-      setSubmitError(mode === "login" ? "登入失敗，請確認帳號密碼。" : "註冊失敗，請確認資料。");
+      setError("發送失敗，請稍後再試。");
+    } finally {
+      setLoading(false);
     }
   }
 
-  function switchMode(nextMode: AuthMode) {
-    setMode(nextMode);
-    setSubmitError(null);
-    reset({ email: "", password: "", username: "" });
+  async function verify() {
+    setError(null);
+    setLoading(true);
+    try {
+      await verifyOtp(phone.trim(), code.trim());
+      onAuthenticated();
+    } catch {
+      setError("驗證碼錯誤。");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -69,83 +59,48 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       style={styles.container}
     >
       <View style={styles.panel}>
-        <Text style={styles.title}>{mode === "login" ? "登入" : "註冊"}</Text>
-        <Text style={styles.subtitle}>使用 Django /api/v1/ 帳號系統</Text>
-
-        <View style={styles.tabs}>
-          <Button
-            accessibilityLabel="切換到登入"
-            variant={mode === "login" ? "primary" : "ghost"}
-            onPress={() => switchMode("login")}
-          >
-            登入
-          </Button>
-          <Button
-            accessibilityLabel="切換到註冊"
-            variant={mode === "register" ? "primary" : "ghost"}
-            onPress={() => switchMode("register")}
-          >
-            註冊
-          </Button>
+        <View style={styles.logo}>
+          <Text style={styles.logoText}>寶</Text>
         </View>
+        <Text style={styles.title}>寶傑淨化科技</Text>
+        <Text style={styles.subtitle}>
+          {step === "phone" ? "手機號碼登入 / 註冊" : `驗證碼已發送至 ${phone}`}
+        </Text>
 
-        <View style={styles.form}>
-          <Controller
-            control={control}
-            name="username"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <TextField
-                accessibilityLabel="帳號"
-                autoComplete="username"
-                error={errors.username?.message}
-                label="帳號"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-              />
-            )}
-          />
-          {mode === "register" ? (
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onBlur, onChange, value } }) => (
-                <TextField
-                  accessibilityLabel="Email"
-                  autoComplete="email"
-                  error={errors.email?.message}
-                  keyboardType="email-address"
-                  label="Email"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
+        {step === "phone" ? (
+          <View style={styles.form}>
+            <TextField
+              accessibilityLabel="手機號碼"
+              keyboardType="phone-pad"
+              label="手機號碼"
+              onChangeText={setPhone}
+              placeholder="例：0912345678"
+              value={phone}
             />
-          ) : null}
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <TextField
-                accessibilityLabel="密碼"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                error={errors.password?.message}
-                label="密碼"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                secureTextEntry
-                value={value}
-              />
-            )}
-          />
-
-          {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
-
-          <Button disabled={isSubmitting} onPress={handleSubmit(onSubmit)}>
-            {isSubmitting ? <ActivityIndicator color="#ffffff" /> : mode === "login" ? "登入" : "建立帳號"}
-          </Button>
-        </View>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Button disabled={loading} onPress={sendOtp}>
+              {loading ? <ActivityIndicator color="#ffffff" /> : "發送驗證碼"}
+            </Button>
+            <Text style={styles.hint}>新號碼會自動註冊為客戶；業務 / 行政由後台開通</Text>
+          </View>
+        ) : (
+          <View style={styles.form}>
+            <TextField
+              accessibilityLabel="驗證碼"
+              keyboardType="number-pad"
+              label="驗證碼（測試固定 000000）"
+              onChangeText={setCode}
+              value={code}
+            />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Button disabled={loading} onPress={verify}>
+              {loading ? <ActivityIndicator color="#ffffff" /> : "驗證並登入"}
+            </Button>
+            <Button variant="ghost" onPress={() => setStep("phone")}>
+              重新輸入手機號碼
+            </Button>
+          </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -153,32 +108,49 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f1f5f9",
     flex: 1,
     justifyContent: "center",
     padding: 20,
   },
   panel: {
-    gap: 18,
+    alignItems: "center",
+    gap: 12,
+  },
+  logo: {
+    alignItems: "center",
+    backgroundColor: "#1d4ed8",
+    borderRadius: 16,
+    height: 56,
+    justifyContent: "center",
+    width: 56,
+  },
+  logoText: {
+    color: "#ffffff",
+    fontSize: 26,
+    fontWeight: "800",
   },
   title: {
     color: "#0f172a",
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "800",
   },
   subtitle: {
     color: "#475569",
-    fontSize: 15,
-  },
-  tabs: {
-    flexDirection: "row",
-    gap: 8,
+    fontSize: 14,
+    marginBottom: 6,
   },
   form: {
+    alignSelf: "stretch",
     gap: 14,
   },
   error: {
     color: "#dc2626",
     fontSize: 14,
+  },
+  hint: {
+    color: "#94a3b8",
+    fontSize: 12,
+    textAlign: "center",
   },
 });

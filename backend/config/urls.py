@@ -14,6 +14,9 @@ admin.site.index_title = settings.ADMIN_INDEX_TITLE
 api_v1_patterns = [
     path("accounts/", include("accounts.urls")),
     path("items/", include("items.urls")),
+    path("catalog/", include("catalog.urls")),
+    path("bookings/", include("bookings.urls")),
+    path("staffing/", include("staffing.urls")),
 ]
 
 urlpatterns = [

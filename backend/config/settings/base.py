@@ -33,8 +33,11 @@ SECRET_KEY = env("SECRET_KEY", default="dev-insecure-change-me")
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost", "web"])
 
-APP_NAME = env("APP_NAME", default="fullstackapp")
+APP_NAME = env("APP_NAME", default="寶傑淨化科技")
 APP_VERSION = env("APP_VERSION", default="0.1.0")
+
+# 模擬 OTP 驗證碼（展示原型用，不真的發簡訊）。串接簡訊商後改為一次性碼驗證。
+DEMO_OTP_CODE = env("DEMO_OTP_CODE", default="000000")
 
 # 反向代理（Caddy）終結 TLS，後端用此 header 判斷原始協定
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -66,6 +69,9 @@ LOCAL_APPS = [
     "common.apps.CommonConfig",
     "accounts.apps.AccountsConfig",
     "items.apps.ItemsConfig",
+    "catalog.apps.CatalogConfig",
+    "staffing.apps.StaffingConfig",
+    "bookings.apps.BookingsConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

@@ -1,48 +1,73 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { logout } from "@/features/auth/api";
 import { AuthScreen } from "@/features/auth/AuthScreen";
-import { ItemsScreen } from "@/features/items/ItemsScreen";
+import { useCurrentUser } from "@/features/auth/hooks";
+import { CustomerApp } from "@/features/bookings/CustomerApp";
+import { StaffApp } from "@/features/dispatch/StaffApp";
 import { queryClient } from "@/lib/queryClient";
 import { tokenStore } from "@/lib/tokens";
 
 function AppContent() {
-  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [hasSession, setHasSession] = useState(false);
+  const qc = useQueryClient();
+  const { data: me, isLoading, isError } = useCurrentUser();
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
     tokenStore.getAccess().then((token) => {
-      if (!isMounted) return;
+      if (!mounted) return;
       setHasSession(Boolean(token));
-      setIsBootstrapping(false);
+      setBootstrapping(false);
     });
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, []);
 
   async function handleLogout() {
     await logout();
-    queryClient.clear();
+    qc.clear();
     setHasSession(false);
   }
 
-  if (isBootstrapping) {
+  if (bootstrapping) return <Centered />;
+
+  if (!hasSession) {
+    return <AuthScreen onAuthenticated={() => setHasSession(true)} />;
+  }
+
+  if (isLoading) return <Centered />;
+  if (isError || !me) {
+    // token 失效：清掉並回登入
+    logout();
+    return <AuthScreen onAuthenticated={() => setHasSession(true)} />;
+  }
+
+  if (me.role === "admin") {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator accessibilityLabel="啟動中" />
+      <View style={styles.center}>
+        <Text style={styles.adminText}>行政人員請改用網頁後台（/admin/）</Text>
       </View>
     );
   }
 
-  return hasSession ? (
-    <ItemsScreen onLogout={handleLogout} />
+  return me.role === "technician" ? (
+    <StaffApp onLogout={handleLogout} />
   ) : (
-    <AuthScreen onAuthenticated={() => setHasSession(true)} />
+    <CustomerApp onLogout={handleLogout} />
+  );
+}
+
+function Centered() {
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator accessibilityLabel="載入中" />
+    </View>
   );
 }
 
@@ -56,10 +81,12 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
+  center: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f1f5f9",
     flex: 1,
     justifyContent: "center",
+    padding: 20,
   },
+  adminText: { color: "#475569", textAlign: "center" },
 });
