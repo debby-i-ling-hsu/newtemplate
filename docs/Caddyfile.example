@@ -1,5 +1,5 @@
 # 伺服器上的 Caddy 反向代理範例（此檔不屬於應用 repo，放在伺服器的 caddy 設定中）。
-# Caddy 容器需與應用接同一個 external network（fullstackapp_net），才能用服務名反代 web:8000。
+# Caddy 容器需與應用接同一個 external network（newtemplate_net），才能用服務 alias 反代 newtemplate-web:8000。
 
 {
     email {$ACME_EMAIL}
@@ -30,11 +30,11 @@ example.com {
     # 健康檢查走便宜的 live 端點
     @health path /healthz/live/
     handle @health {
-        reverse_proxy web:8000
+        reverse_proxy newtemplate-web:8000
     }
 
     handle {
-        reverse_proxy web:8000
+        reverse_proxy newtemplate-web:8000
     }
 }
 

@@ -11,7 +11,7 @@
 
 ```bash
 # 1) 建立 external network（prod compose 用 external network；Caddy 也接這個）
-docker network create fullstackapp_net
+docker network create newtemplate_net
 
 # 2) 準備祕密檔（不進版控）
 cp backend/env/.env.stage.example backend/env/.env.stage   # 填入真實值
@@ -61,16 +61,16 @@ your-domain.com {
 
     @health path /healthz/live/
     handle @health {
-        reverse_proxy web:8000
+        reverse_proxy newtemplate-web:8000
     }
 
     handle {
-        reverse_proxy web:8000
+        reverse_proxy newtemplate-web:8000
     }
 }
 ```
 
-> Caddy 容器需與應用在同一個 `fullstackapp_net`（external network），才能用服務名 `web` 連到後端。
+> Caddy 容器需與應用在同一個 `newtemplate_net`（external network），才能用服務 alias `newtemplate-web` 連到後端。
 
 ## 備份 / 還原 / 跨環境遷移
 

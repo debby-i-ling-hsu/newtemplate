@@ -1,8 +1,8 @@
 # Prod：建置好的 image、嚴格資源上限、每日 DB 備份 sidecar、外部網路（由 Caddy 連入）。
 # 由 scripts/deploy.sh 驅動（make prod）。
 #
-# 注意：fullstackapp_net 設為 external，須先建立：
-#   docker network create fullstackapp_net
+# 注意：newtemplate_net 設為 external，須先建立：
+#   docker network create newtemplate_net
 # 伺服器上的 Caddy 也接到同一個 external network，以服務名反代 web:8000。
 
 x-logging: &default-logging
@@ -17,7 +17,7 @@ x-app-environment: &app-environment
   PYTHONPATH: /app/backend
 
 x-worker: &worker
-  image: fullstackapp-worker:prod
+  image: newtemplate-worker:prod
   build:
     context: .
     dockerfile: dockerfiles/Dockerfile.web
@@ -34,11 +34,11 @@ x-worker: &worker
   volumes:
     - ./backend/logs:/app/backend/logs
   networks:
-    - fullstackapp_net
+    - newtemplate_net
 
 services:
   web:
-    image: fullstackapp-web:prod
+    image: newtemplate-web:prod
     build:
       context: .
       dockerfile: dockerfiles/Dockerfile.web
@@ -70,9 +70,9 @@ services:
           cpus: "1.5"
           memory: 2048m
     networks:
-      fullstackapp_net:
+      newtemplate_net:
         aliases:
-          - fullstackapp-web
+          - newtemplate-web
 
   worker-default:
     <<: *worker
@@ -117,7 +117,7 @@ services:
           memory: 1024m
 
   beat:
-    image: fullstackapp-beat:prod
+    image: newtemplate-beat:prod
     build:
       context: .
       dockerfile: dockerfiles/Dockerfile.web
@@ -142,7 +142,7 @@ services:
           cpus: "0.15"
           memory: 256m
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
   redis:
     image: redis:7-alpine
@@ -157,9 +157,9 @@ services:
     volumes:
       - redis_prod_data:/data
     networks:
-      fullstackapp_net:
+      newtemplate_net:
         aliases:
-          - fullstackapp-redis
+          - newtemplate-redis
 
   db:
     image: postgres:16-alpine
@@ -183,9 +183,9 @@ services:
           cpus: "1.0"
           memory: 2048m
     networks:
-      fullstackapp_net:
+      newtemplate_net:
         aliases:
-          - fullstackapp-db
+          - newtemplate-db
 
   # 排程備份 sidecar：用 crond 依 BACKUP_SCHEDULE 呼叫 scripts/db.sh dump prod。
   # 透過掛載的 docker socket 對 db 容器執行 pg_dump，並 prune 只留最近 BACKUP_KEEP 份。
@@ -194,14 +194,14 @@ services:
     build:
       context: .
       dockerfile: dockerfiles/Dockerfile.db-backup
-    image: fullstackapp-db-backup:prod
+    image: newtemplate-db-backup:prod
     restart: unless-stopped
     logging: *default-logging
     environment:
       BACKUP_ENV: prod
       BACKUP_SCHEDULE: "0 3 * * *"
       BACKUP_KEEP: "7"
-      COMPOSE_PROJECT_NAME: fullstackapp
+      COMPOSE_PROJECT_NAME: newtemplate
     depends_on:
       db:
         condition: service_healthy
@@ -209,12 +209,12 @@ services:
       - .:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
 volumes:
   postgres_prod_data:
   redis_prod_data:
 
 networks:
-  fullstackapp_net:
+  newtemplate_net:
     external: true

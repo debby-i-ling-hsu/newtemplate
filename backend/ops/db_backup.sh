@@ -31,7 +31,7 @@ echo "Scheduling $BACKUP_ENV DB backups (schedule='$BACKUP_SCHEDULE', keep=$BACK
 cat > /etc/crontabs/root <<EOF
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-fullstackapp}
+COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-newtemplate}
 $BACKUP_SCHEDULE cd "$WORKSPACE_DIR" && ./scripts/db.sh dump "$BACKUP_ENV" -y >> /proc/1/fd/1 2>> /proc/1/fd/2 && ./scripts/db.sh prune "$BACKUP_ENV" "$BACKUP_KEEP" >> /proc/1/fd/1 2>> /proc/1/fd/2
 EOF
 

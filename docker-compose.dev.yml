@@ -11,7 +11,7 @@ x-worker: &worker
     context: .
     dockerfile: dockerfiles/Dockerfile.web
     target: celery-worker
-  image: fullstackapp-worker:dev
+  image: newtemplate-worker:dev
   restart: unless-stopped
   env_file:
     - ./backend/env/.env.dev
@@ -23,7 +23,7 @@ x-worker: &worker
   volumes:
     - ./backend:/app/backend
   networks:
-    - fullstackapp_net
+    - newtemplate_net
 
 services:
   web:
@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.web
       target: web
-    image: fullstackapp-web:dev
+    image: newtemplate-web:dev
     restart: unless-stopped
     environment:
       <<: *app-environment
@@ -58,7 +58,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
   worker-default:
     <<: *worker
@@ -92,7 +92,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.web
       target: celery-beat
-    image: fullstackapp-beat:dev
+    image: newtemplate-beat:dev
     restart: unless-stopped
     environment:
       <<: *app-environment
@@ -107,11 +107,11 @@ services:
     volumes:
       - ./backend:/app/backend
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
   vite:
     image: node:20-alpine
-    container_name: fullstackapp-vite
+    container_name: newtemplate-vite
     restart: unless-stopped
     working_dir: /app/frontend
     command: >
@@ -129,11 +129,11 @@ services:
       web:
         condition: service_healthy
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
   redis:
     image: redis:7-alpine
-    container_name: fullstackapp-redis
+    container_name: newtemplate-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
@@ -144,11 +144,11 @@ services:
     volumes:
       - redis_dev_data:/data
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
   db:
     image: postgres:16-alpine
-    container_name: fullstackapp-db
+    container_name: newtemplate-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: fullstackapp
@@ -162,7 +162,7 @@ services:
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     networks:
-      - fullstackapp_net
+      - newtemplate_net
 
 volumes:
   postgres_dev_data:
@@ -170,5 +170,5 @@ volumes:
   vite_node_modules:
 
 networks:
-  fullstackapp_net:
+  newtemplate_net:
     driver: bridge

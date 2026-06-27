@@ -9,7 +9,7 @@
 
 # host 的 make 與排程備份 sidecar 共用同一個 compose project name，
 # scripts/db.sh 的 `compose exec` 才會打到同一組容器。
-export COMPOSE_PROJECT_NAME ?= fullstackapp
+export COMPOSE_PROJECT_NAME ?= newtemplate
 
 COMPOSE_DEV := docker compose -f docker-compose.dev.yml
 COMPOSE_STAGE := docker compose -f docker-compose.stage.yml

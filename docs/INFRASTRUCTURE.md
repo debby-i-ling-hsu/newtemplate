@@ -45,8 +45,8 @@ python-base ─┬─ frontend-builder (node:20-alpine)  npm ci → npm run buil
 
 - **依賴順序**：worker/beat/web 都 `depends_on` db + redis 的 `service_healthy`。
 - **volumes**：`postgres_dev_data`、`redis_dev_data`、`vite_node_modules`。
-- **network**：`fullstackapp_net`（bridge）。
-- `COMPOSE_PROJECT_NAME=fullstackapp`（Makefile / deploy.sh / db.sh 共用，`compose exec` 才打到同一組容器）。
+- **network**：`newtemplate_net`（stage/prod 為 external bridge，供 VPS 上的 Caddy 連入）。
+- `COMPOSE_PROJECT_NAME=newtemplate`（Makefile / deploy.sh / db.sh 共用，`compose exec` 才打到同一組容器）。
 
 > dev 雙入口：`:3000`（Vite/HMR）+ `:8000`（Django 同網域，模擬 stage/prod）。stage/prod compose 拿掉程式碼掛載與 vite，web 用 uvicorn，並加 `db-backup` sidecar；見 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
@@ -107,7 +107,7 @@ dev/stage/prod 共用，CLI 與排程 sidecar 都走它，命名一致 `backups/
 
 ## 7. 反向代理（Caddy，不在 repo）
 
-伺服器上獨立的 Caddy 終結 TLS、處理 HSTS / 安全 header，以服務名反代 `web:8000`。需與應用同在 `fullstackapp_net`（external network）。範例 `docs/Caddyfile.example`，串接見 [DEPLOYMENT.md](DEPLOYMENT.md)。
+伺服器上獨立的 Caddy 終結 TLS、處理 HSTS / 安全 header，以服務 alias 反代 `newtemplate-web:8000`。需與應用同在 `newtemplate_net`（external network）。範例 `docs/Caddyfile.example`，串接見 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ---
 

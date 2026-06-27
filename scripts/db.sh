@@ -38,7 +38,7 @@ PG_DUMP_FLAGS="${PG_DUMP_FLAGS:---no-owner --no-privileges}"
 DEFAULT_KEEP="${BACKUP_KEEP:-7}"
 # host 的 make 與排程 sidecar 必須用同一個 compose project name，
 # exec 才會打到同一組容器。
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-fullstackapp}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-newtemplate}"
 export COMPOSE_PROJECT_NAME
 
 die() { echo "❌ $*" >&2; exit 1; }

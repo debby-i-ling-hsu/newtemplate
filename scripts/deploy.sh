@@ -12,16 +12,17 @@ case "$environment" in
 esac
 
 # host 與排程 sidecar 共用同一 compose project name（scripts/db.sh 也依賴它）
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-fullstackapp}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-newtemplate}"
 
 compose="docker compose -f docker-compose.${environment}.yml"
 env_file="./backend/env/.env.${environment}"
 backup_dir="${DB_BACKUP_DIR:-backups}"
 timestamp="$(date +%Y%m%d-%H%M%S)"
 workers="worker-default worker-maintenance worker-long-running"
-web_image="fullstackapp-web:${environment}"
-worker_image="fullstackapp-worker:${environment}"
-beat_image="fullstackapp-beat:${environment}"
+web_image="newtemplate-web:${environment}"
+worker_image="newtemplate-worker:${environment}"
+beat_image="newtemplate-beat:${environment}"
+network_name="newtemplate_net"
 
 [ -f "$env_file" ] || { echo "[deploy] missing $env_file" >&2; exit 1; }
 
@@ -70,6 +71,7 @@ trap 'exit 143' TERM
 trap on_exit EXIT
 
 # ── 建置與相依服務 ──
+docker network inspect "$network_name" >/dev/null 2>&1 || docker network create "$network_name" >/dev/null
 $compose config -q
 $compose build web worker-default beat
 $compose up -d db redis
