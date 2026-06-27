@@ -1,4 +1,4 @@
-"""結構化 logging 工具（業界標準：12-factor，日誌即事件流，一律寫 stdout）。
+"""結構化 logging 工具。
 
 核心能力：
 - 關聯 ID 串接：`request_id` 由 RequestIDMiddleware 設定；Celery 任務則由 celery.py
@@ -8,6 +8,7 @@
 - ConsoleFormatter：本機可讀格式。
 - JsonFormatter：stage/prod 給 log 收集器吃的 JSON，含來源位置（module/func/line）、
   例外/堆疊，並**自動透傳** `logger.info(..., extra={...})` 的自訂結構化欄位。
+完整 log 仍走 stdout；settings 會把 WARNING 以上另寫檔，方便事故後查詢。
 """
 
 import datetime as _dt

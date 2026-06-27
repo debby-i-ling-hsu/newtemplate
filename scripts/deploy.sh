@@ -23,10 +23,21 @@ web_image="newtemplate-web:${environment}"
 worker_image="newtemplate-worker:${environment}"
 beat_image="newtemplate-beat:${environment}"
 network_name="newtemplate_net"
+storage_smoke_container="newtemplate-storage-smoke-${environment}"
 
 [ -f "$env_file" ] || { echo "[deploy] missing $env_file" >&2; exit 1; }
 
 env_value() { sed -n "s/^$1=//p" "$2" | tail -n 1; }
+
+run_with_timeout() {
+  limit="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout -k 10s "$limit" "$@"
+  else
+    "$@"
+  fi
+}
 
 ensure_external_network() {
   if docker network inspect "$network_name" >/dev/null 2>&1; then
@@ -45,8 +56,8 @@ ensure_external_network() {
 storage_backend="$(env_value DEFAULT_FILE_STORAGE "$env_file")"
 storage_account="$(env_value AZURE_ACCOUNT_NAME "$env_file")"
 case "$storage_backend" in
-  storages.backends.azure_storage.AzureStorage|common.storage.AutoCreateAzureStorage) ;;
-  *) echo "[deploy] ${environment} 必須使用 Azure Blob 儲存（DEFAULT_FILE_STORAGE）。" >&2; exit 1 ;;
+  common.storage.AutoCreateAzureStorage) ;;
+  *) echo "[deploy] ${environment} 必須使用 common.storage.AutoCreateAzureStorage（DEFAULT_FILE_STORAGE），確保 Azure Blob container 可自動建立。" >&2; exit 1 ;;
 esac
 [ -n "$storage_account" ] || { echo "[deploy] ${environment} 需要 AZURE_ACCOUNT_NAME。" >&2; exit 1; }
 if [ "$environment" = "prod" ] && [ -f ./backend/env/.env.stage ]; then
@@ -104,21 +115,58 @@ rollback_needed=1
 $compose stop -t 30 beat >/dev/null 2>&1 || true
 $compose stop -t 120 $workers >/dev/null 2>&1 || true
 $compose up -d --no-build $workers beat
-$compose up -d db-backup 2>/dev/null || true
+echo "[deploy] 啟動 DB 備份 sidecar（失敗不阻斷部署）..."
+if ! $compose up -d db-backup; then
+  echo "[deploy] warning: db-backup sidecar 啟動失敗，請部署後檢查。" >&2
+fi
 
 # ── 健康閘門：等 /healthz/ready/ 變綠（最多約 2 分鐘）──
+echo "[deploy] 等待 /healthz/ready/ 綠燈..."
 attempt=1
-until $compose exec -T web curl -fsS http://127.0.0.1:8000/healthz/ready/ >/dev/null 2>&1; do
+while :; do
+  health_response="$($compose exec -T web sh -c 'curl -sS --max-time 5 -w "\n%{http_code}" http://127.0.0.1:8000/healthz/ready/' 2>&1 || true)"
+  health_status="$(printf '%s\n' "$health_response" | tail -n 1)"
+  health_body="$(printf '%s\n' "$health_response" | sed '$d')"
+  if [ "$health_status" = "200" ]; then
+    break
+  fi
+
   if [ "$attempt" -ge 24 ]; then
-    echo "[deploy] /healthz/ready/ 一直沒綠燈，中止。" >&2
+    echo "[deploy] /healthz/ready/ 一直沒綠燈，中止。最後回應 status=${health_status} body=${health_body}" >&2
     exit 1
   fi
+  echo "[deploy] /healthz/ready/ 尚未就緒 (${attempt}/24): status=${health_status} body=${health_body}" >&2
   attempt=$((attempt + 1))
   sleep 5
 done
+echo "[deploy] /healthz/ready/ OK"
 
 # ── 真打一次儲存後端，確保雲端讀寫真的通 ──
-$compose exec -T web python manage.py storage_smoke_test
+echo "[deploy] 執行 storage smoke test（最多 90 秒）..."
+docker run --rm --entrypoint sh "$web_image" -c "grep -q 'storage smoke using' /app/backend/common/management/commands/storage_smoke_test.py" \
+  || echo "[deploy] warning: web image 內的 storage_smoke_test.py 沒有逐步輸出，可能不是最新版 image。" >&2
+docker rm -f "$storage_smoke_container" >/dev/null 2>&1 || true
+set +e
+run_with_timeout 100s docker run --name "$storage_smoke_container" --rm \
+  --network "$network_name" \
+  --env-file "$env_file" \
+  -e "DJANGO_ENV=${environment}" \
+  -e "DJANGO_SETTINGS_MODULE=config.settings.${environment}" \
+  -e "PYTHONPATH=/app/backend" \
+  --entrypoint sh "$web_image" \
+  -c 'timeout -k 10s 90s python -u manage.py storage_smoke_test'
+storage_status=$?
+set -e
+if [ "$storage_status" -ne 0 ]; then
+  status="$storage_status"
+  docker rm -f "$storage_smoke_container" >/dev/null 2>&1 || true
+  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+    echo "[deploy] storage smoke test 超過 90 秒，請檢查 Azure Blob 帳號、金鑰、container、DNS/防火牆與 VPS 對 Azure 的連線。" >&2
+  else
+    echo "[deploy] storage smoke test 失敗（exit=${status}）。" >&2
+  fi
+  exit "$status"
+fi
 
 rollback_needed=0
 trap - EXIT HUP INT TERM

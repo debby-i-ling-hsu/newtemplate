@@ -80,12 +80,15 @@
 
 | 變數 | 預設 | 必填 | 說明 |
 |------|------|:---:|------|
-| `DEFAULT_FILE_STORAGE` | — | ✅(stage/prod) | dev：`django.core.files.storage.FileSystemStorage`；stage/prod：`storages.backends.azure_storage.AzureStorage` |
+| `DEFAULT_FILE_STORAGE` | — | ✅(stage/prod) | dev：`django.core.files.storage.FileSystemStorage`；stage/prod：`common.storage.AutoCreateAzureStorage` |
 | `MEDIA_URL` | `/media/` | | dev 本地 media 路徑 |
 | `AZURE_ACCOUNT_NAME` | （空） | ✅(stage/prod) | Azure 帳號；**stage 與 prod 必須不同**（deploy.sh 強制） |
 | `AZURE_ACCOUNT_KEY` | （空） | ✅(stage/prod) | Azure 金鑰 |
 | `AZURE_CONTAINER` | `media` | | container 名 |
 | `AZURE_URL_EXPIRATION_SECS` | `3600` | | 簽名 URL 有效秒數 |
+| `AZURE_CONNECTION_TIMEOUT_SECS` | `10` | | Azure Blob connect/read timeout 秒數 |
+| `AZURE_CLIENT_RETRY_TOTAL` | `1` | | Azure SDK 重試次數；部署 smoke test 要避免卡太久 |
+| `STORAGE_SMOKE_OPERATION_TIMEOUT_SECS` | `25` | | 部署 storage smoke test 每個 write/read/delete 步驟的 timeout 秒數 |
 
 > static（CSS/JS/admin）三環境都用 WhiteNoise，無需額外變數。
 
@@ -105,6 +108,9 @@
 | `LOG_FORMAT` | 依環境 | `console`（本機可讀）/ `json`（stage/prod） |
 | `LOG_LEVEL` | `INFO` | log 等級 |
 | `LOG_SERVICE_NAME` | `web` | process 名（compose 逐一設 `web`/`worker-default`/…） |
+| `LOG_ERROR_FILE_ENABLED` | `True`（test 除外） | 是否把 `WARNING` 以上另存到 `backend/logs/errors/<env>-<service>.log` |
+| `LOG_ERROR_RETENTION_DAYS` | `30` | warning/error log 檔每日輪替後保留天數 |
+| `LOG_ERROR_DIR` | `backend/logs/errors` | warning/error log 檔目錄；stage/prod 會掛到 host |
 | `REQUEST_LATENCY_WARN_MS` | `1500` | 超過此延遲記 warning |
 | `REQUEST_LATENCY_LOG_ALL` | `False` | 是否記錄所有請求延遲 |
 | `REQUEST_LATENCY_HEADER_ENABLED` | `False` | 是否回延遲 header |

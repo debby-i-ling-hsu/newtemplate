@@ -1,11 +1,12 @@
 .PHONY: help \
-	dev dev-down dev-restart dev-reset dev-logs dev-logs-service dev-shell \
+	dev dev-down dev-restart dev-reset dev-logs dev-logs-service dev-errors dev-errors-service dev-errors-grep dev-errors-list dev-shell \
 	dev-superuser dev-makemigrations dev-health \
 	dev-dump dev-restore stage-dump stage-restore prod-dump prod-restore ANY YES \
 	backend-venv backend-check backend-test backend-fmt \
 	frontend-install frontend-lint frontend-test frontend-build \
 	mobile-install mobile-start mobile-ios mobile-android mobile-lint mobile-typecheck mobile-test mobile-check \
-	check stage stage-down stage-logs stage-health prod prod-down prod-logs prod-health
+	check stage stage-down stage-logs stage-logs-service stage-errors stage-errors-service stage-errors-grep stage-errors-list stage-shell stage-superuser stage-health \
+	prod prod-down prod-logs prod-logs-service prod-errors prod-errors-service prod-errors-grep prod-errors-list prod-shell prod-superuser prod-health
 
 # host 的 make 與排程備份 sidecar 共用同一個 compose project name，
 # scripts/db.sh 的 `compose exec` 才會打到同一組容器。
@@ -51,6 +52,22 @@ dev-logs: ## 追全部 log
 
 dev-logs-service: ## 追單一服務 log（SERVICE=web|worker-default|...）
 	$(COMPOSE_DEV) logs -f $(SERVICE)
+
+dev-errors: ## 追 dev 保留的 warning/error log
+	@mkdir -p backend/logs/errors
+	@sh -c 'set -- backend/logs/errors/dev-*.log; if [ ! -e "$$1" ]; then echo "no dev error logs yet"; exit 0; fi; tail -n "$${LINES:-200}" -F "$$@"'
+
+dev-errors-service: ## 追 dev 單一服務 warning/error log（SERVICE=web|worker-default|...）
+	@test -n "$(SERVICE)" || (echo "usage: make dev-errors-service SERVICE=web"; exit 2)
+	@mkdir -p backend/logs/errors
+	@tail -n "$${LINES:-200}" -F backend/logs/errors/dev-$(SERVICE).log
+
+dev-errors-grep: ## 搜尋 dev 保留的 warning/error log（Q=keyword）
+	@test -n "$(Q)" || (echo "usage: make dev-errors-grep Q=keyword"; exit 2)
+	@grep -RIn -- "$(Q)" backend/logs/errors/dev-*.log* 2>/dev/null || true
+
+dev-errors-list: ## 列出 dev 保留的 warning/error log 檔
+	@find backend/logs/errors -maxdepth 1 -type f -name 'dev-*.log*' -print 2>/dev/null | sort || true
 
 dev-shell: ## 進入 web 容器 shell
 	$(COMPOSE_DEV) exec web bash
@@ -137,6 +154,31 @@ stage-down: ## 停止 stage
 stage-logs: ## 追 stage log
 	$(COMPOSE_STAGE) logs -f
 
+stage-logs-service: ## 追 stage 單一服務 log（SERVICE=web|worker-default|...）
+	$(COMPOSE_STAGE) logs -f $(SERVICE)
+
+stage-errors: ## 追 stage 保留的 warning/error log
+	@mkdir -p backend/logs/errors
+	@sh -c 'set -- backend/logs/errors/stage-*.log; if [ ! -e "$$1" ]; then echo "no stage error logs yet"; exit 0; fi; tail -n "$${LINES:-200}" -F "$$@"'
+
+stage-errors-service: ## 追 stage 單一服務 warning/error log（SERVICE=web|worker-default|...）
+	@test -n "$(SERVICE)" || (echo "usage: make stage-errors-service SERVICE=web"; exit 2)
+	@mkdir -p backend/logs/errors
+	@tail -n "$${LINES:-200}" -F backend/logs/errors/stage-$(SERVICE).log
+
+stage-errors-grep: ## 搜尋 stage 保留的 warning/error log（Q=keyword）
+	@test -n "$(Q)" || (echo "usage: make stage-errors-grep Q=keyword"; exit 2)
+	@grep -RIn -- "$(Q)" backend/logs/errors/stage-*.log* 2>/dev/null || true
+
+stage-errors-list: ## 列出 stage 保留的 warning/error log 檔
+	@find backend/logs/errors -maxdepth 1 -type f -name 'stage-*.log*' -print 2>/dev/null | sort || true
+
+stage-shell: ## 進入 stage web 容器 shell
+	$(COMPOSE_STAGE) exec web sh
+
+stage-superuser: ## 建立 stage Django 管理員帳號
+	$(COMPOSE_STAGE) exec web python manage.py createsuperuser
+
 stage-health: ## 檢查 stage /healthz/ready/
 	$(COMPOSE_STAGE) exec -T web curl -fsS http://127.0.0.1:8000/healthz/ready/
 
@@ -154,6 +196,31 @@ prod-down: ## 停止 prod
 
 prod-logs: ## 追 prod log
 	$(COMPOSE_PROD) logs -f
+
+prod-logs-service: ## 追 prod 單一服務 log（SERVICE=web|worker-default|...）
+	$(COMPOSE_PROD) logs -f $(SERVICE)
+
+prod-errors: ## 追 prod 保留的 warning/error log
+	@mkdir -p backend/logs/errors
+	@sh -c 'set -- backend/logs/errors/prod-*.log; if [ ! -e "$$1" ]; then echo "no prod error logs yet"; exit 0; fi; tail -n "$${LINES:-200}" -F "$$@"'
+
+prod-errors-service: ## 追 prod 單一服務 warning/error log（SERVICE=web|worker-default|...）
+	@test -n "$(SERVICE)" || (echo "usage: make prod-errors-service SERVICE=web"; exit 2)
+	@mkdir -p backend/logs/errors
+	@tail -n "$${LINES:-200}" -F backend/logs/errors/prod-$(SERVICE).log
+
+prod-errors-grep: ## 搜尋 prod 保留的 warning/error log（Q=keyword）
+	@test -n "$(Q)" || (echo "usage: make prod-errors-grep Q=keyword"; exit 2)
+	@grep -RIn -- "$(Q)" backend/logs/errors/prod-*.log* 2>/dev/null || true
+
+prod-errors-list: ## 列出 prod 保留的 warning/error log 檔
+	@find backend/logs/errors -maxdepth 1 -type f -name 'prod-*.log*' -print 2>/dev/null | sort || true
+
+prod-shell: ## 進入 prod web 容器 shell
+	$(COMPOSE_PROD) exec web sh
+
+prod-superuser: ## 建立 prod Django 管理員帳號
+	$(COMPOSE_PROD) exec web python manage.py createsuperuser
 
 prod-health: ## 檢查 prod /healthz/ready/
 	$(COMPOSE_PROD) exec -T web curl -fsS http://127.0.0.1:8000/healthz/ready/

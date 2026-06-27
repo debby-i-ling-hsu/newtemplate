@@ -62,7 +62,11 @@ def health_ready(_request):
     required = getattr(settings, "CELERY_REQUIRED_WORKERS", [])
     if required:
         try:
-            online = {key.split("celery:heartbeat:", 1)[-1] for key in _scan_heartbeat_keys()}
+            online = {
+                worker
+                for key in _scan_heartbeat_keys()
+                for worker in _worker_hostname_candidates(key.split("celery:heartbeat:", 1)[-1])
+            }
             missing = [
                 name for name in required if not any(host.startswith(name) for host in online)
             ]
@@ -106,6 +110,28 @@ def _scan_heartbeat_keys():
         key.decode() if isinstance(key, bytes) else key
         for key in client.scan_iter(match=f"{prefix}celery:heartbeat:*")
     ]
+
+
+def _worker_hostname_candidates(hostname: str):
+    """Return names healthz can match against CELERY_REQUIRED_WORKERS.
+
+    Celery can report worker hostnames as ``celery@worker-default`` while this
+    template config uses ``worker-default`` in CELERY_REQUIRED_WORKERS.
+    heartbeat_sent may also pass a Heart object as sender; ignore those reprs.
+    """
+
+    hostname = str(hostname).strip()
+    if not hostname or hostname.startswith("<"):
+        return set()
+
+    candidates = {hostname}
+    if "@" in hostname:
+        left, right = hostname.split("@", 1)
+        candidates.add(right)
+        if left != "celery":
+            candidates.add(left)
+
+    return {candidate for candidate in candidates if candidate and not candidate.startswith("<")}
 
 
 def spa(_request):

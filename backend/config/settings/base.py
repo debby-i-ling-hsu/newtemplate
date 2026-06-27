@@ -273,6 +273,20 @@ AZURE_ACCOUNT_NAME = env("AZURE_ACCOUNT_NAME", default="")
 AZURE_ACCOUNT_KEY = env("AZURE_ACCOUNT_KEY", default="")
 AZURE_CONTAINER = env("AZURE_CONTAINER", default="media")
 AZURE_URL_EXPIRATION_SECS = env.int("AZURE_URL_EXPIRATION_SECS", default=3600)
+AZURE_CONNECTION_TIMEOUT_SECS = env.int("AZURE_CONNECTION_TIMEOUT_SECS", default=10)
+AZURE_CLIENT_RETRY_TOTAL = env.int("AZURE_CLIENT_RETRY_TOTAL", default=1)
+AZURE_CLIENT_OPTIONS = {
+    "connection_timeout": AZURE_CONNECTION_TIMEOUT_SECS,
+    "read_timeout": AZURE_CONNECTION_TIMEOUT_SECS,
+    "retry_total": AZURE_CLIENT_RETRY_TOTAL,
+    "retry_connect": AZURE_CLIENT_RETRY_TOTAL,
+    "retry_read": AZURE_CLIENT_RETRY_TOTAL,
+    "retry_status": AZURE_CLIENT_RETRY_TOTAL,
+}
+STORAGE_SMOKE_OPERATION_TIMEOUT_SECS = env.int(
+    "STORAGE_SMOKE_OPERATION_TIMEOUT_SECS",
+    default=25,
+)
 
 # ---------------------------------------------------------------------------
 # Redis / Cache / Celery
@@ -356,6 +370,32 @@ LOG_FORMAT = env(
     "LOG_FORMAT", default="console" if DJANGO_ENV in {"dev", "test"} else "json"
 )  # console | json
 LOG_SERVICE_NAME = env("LOG_SERVICE_NAME", default="web")
+LOG_ERROR_FILE_ENABLED = env.bool("LOG_ERROR_FILE_ENABLED", default=DJANGO_ENV != "test")
+LOG_ERROR_RETENTION_DAYS = env.int("LOG_ERROR_RETENTION_DAYS", default=30)
+LOG_ERROR_DIR = Path(env("LOG_ERROR_DIR", default=str(BASE_DIR / "logs" / "errors")))
+LOG_ERROR_FILE = LOG_ERROR_DIR / f"{DJANGO_ENV}-{LOG_SERVICE_NAME}.log"
+
+LOG_HANDLERS = ["console"]
+LOGGING_HANDLERS = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "formatter": LOG_FORMAT,
+        "filters": ["request_context"],
+    },
+}
+if LOG_ERROR_FILE_ENABLED:
+    LOG_ERROR_DIR.mkdir(parents=True, exist_ok=True)
+    LOGGING_HANDLERS["warning_error_file"] = {
+        "class": "logging.handlers.TimedRotatingFileHandler",
+        "filename": str(LOG_ERROR_FILE),
+        "when": "midnight",
+        "backupCount": LOG_ERROR_RETENTION_DAYS,
+        "encoding": "utf-8",
+        "formatter": LOG_FORMAT,
+        "filters": ["request_context"],
+        "level": "WARNING",
+    }
+    LOG_HANDLERS.append("warning_error_file")
 
 LOGGING = {
     "version": 1,
@@ -375,18 +415,12 @@ LOGGING = {
             "env": DJANGO_ENV,
         },
     },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": LOG_FORMAT,
-            "filters": ["request_context"],
-        },
-    },
-    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "handlers": LOGGING_HANDLERS,
+    "root": {"handlers": LOG_HANDLERS, "level": LOG_LEVEL},
     "loggers": {
-        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
-        "performance.request": {"handlers": ["console"], "level": "INFO", "propagate": False},
-        "performance.health": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django": {"handlers": LOG_HANDLERS, "level": LOG_LEVEL, "propagate": False},
+        "performance.request": {"handlers": LOG_HANDLERS, "level": "INFO", "propagate": False},
+        "performance.health": {"handlers": LOG_HANDLERS, "level": "INFO", "propagate": False},
     },
 }
 

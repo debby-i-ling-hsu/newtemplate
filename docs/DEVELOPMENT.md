@@ -193,6 +193,9 @@ pre-commit run --all-files                       # 手動對全 repo 跑
 | `make dev-reset` | 砍掉並重建（**清除 db/redis volume**） |
 | `make dev-logs` | 追全部 log |
 | `make dev-logs-service SERVICE=web` | 追單一服務 log |
+| `make dev-errors` | 追本機保留的 warning/error log |
+| `make dev-errors-service SERVICE=web` | 追本機單一服務 warning/error log |
+| `make dev-errors-grep Q=keyword` | 搜尋本機保留的 warning/error log |
 | `make dev-shell` | 進 web 容器 bash |
 | `make dev-superuser` | 建 Django 管理員帳號 |
 | `make dev-makemigrations` | 改 model 後產生 migration |
@@ -217,7 +220,13 @@ pre-commit run --all-files                       # 手動對全 repo 跑
 |------|------|
 | `make stage` / `make prod` | 安全部署（`scripts/deploy.sh`，含閘門與自動回滾） |
 | `make stage-down` / `prod-down` | 停止 stage / prod |
-| `make stage-logs` / `prod-logs` | 追 stage / prod log |
+| `make stage-logs` / `prod-logs` | 追 stage / prod Docker log stream |
+| `make stage-logs-service SERVICE=web` / `prod-logs-service SERVICE=web` | 追單一服務 Docker log stream |
+| `make stage-errors` / `prod-errors` | 追 stage / prod 保留的 warning/error log |
+| `make stage-errors-service SERVICE=web` / `prod-errors-service SERVICE=web` | 追單一服務 warning/error log |
+| `make stage-errors-grep Q=keyword` / `prod-errors-grep Q=keyword` | 搜尋保留的 warning/error log |
+| `make stage-shell` / `prod-shell` | 進 stage / prod web 容器 shell |
+| `make stage-superuser` / `prod-superuser` | 建 stage / prod Django 管理員帳號 |
 | `make stage-health` / `prod-health` | 打 stage / prod `/healthz/ready/` |
 | `make <env>-dump` | 備份 DB → `backups/<env>_<時間>.sql.gz` |
 | `make <env>-restore [FILE=… \| ANY] [YES]` | 還原 DB（**破壞性**，DROP+CREATE） |

@@ -179,7 +179,10 @@ class IsOwner(permissions.BasePermission):
 
 ## 8. 可觀測性 / 結構化 Logging
 
-`config/logging_utils.py` + `settings/base.py` 的 `LOGGING`。一律寫 **stdout**（12-factor）。
+`config/logging_utils.py` + `settings/base.py` 的 `LOGGING`：
+
+- **stdout**：保留完整 log stream，交給 Docker / log collector 查全量脈絡。
+- **檔案留存**：`WARNING` 以上另寫到 `backend/logs/errors/<env>-<service>.log`，方便 stage/prod 事故後快速 grep。
 
 ### 格式
 
@@ -204,6 +207,9 @@ class IsOwner(permissions.BasePermission):
 ### 其他
 
 - `LOG_SERVICE_NAME`：每個 process 各自具名（compose 設 `web`/`worker-default`/…），JSON log 可分辨來源。
+- `LOG_ERROR_FILE_ENABLED`：是否啟用 warning/error 檔案留存（預設 test 關閉，其餘環境開啟）。
+- `LOG_ERROR_RETENTION_DAYS`：檔案每日輪替後保留天數（預設 30）。
+- `LOG_ERROR_DIR`：檔案留存目錄，預設 `backend/logs/errors`；stage/prod compose 會掛到 host 的 `./backend/logs`。
 - 請求延遲：`performance.request` logger（見 middleware）。
 - 健康：`performance.health` logger（not ready 時記 warning）。
 - **Sentry**：設 `SENTRY_DSN` 即啟用（Django + Celery integration、`send_default_pii=False`、靠 request_id 對照）；留空完全不啟用。

@@ -23,7 +23,7 @@ cp backend/env/.env.prod.example  backend/env/.env.prod
 `.env.stage` / `.env.prod` 必填重點：
 - `SECRET_KEY`、`ALLOWED_HOSTS`、`CSRF_TRUSTED_ORIGINS`
 - `DATABASE_URL` 與 `POSTGRES_PASSWORD`（兩處密碼要一致）
-- `DEFAULT_FILE_STORAGE=storages.backends.azure_storage.AzureStorage`、`AZURE_ACCOUNT_NAME`、`AZURE_ACCOUNT_KEY`、`AZURE_CONTAINER`
+- `DEFAULT_FILE_STORAGE=common.storage.AutoCreateAzureStorage`、`AZURE_ACCOUNT_NAME`、`AZURE_ACCOUNT_KEY`、`AZURE_CONTAINER`
 - `DDOS_TRUSTED_PROXY_COUNT=1`（Caddy 是唯一反代）
 
 ## 部署

@@ -122,10 +122,11 @@ stage 鏡像 prod 用雲端儲存，才能在進 prod 前抓出簽名 URL / CORS
 
 ## 可觀測性
 
-結構化 logging 一律寫 **stdout**（12-factor：日誌即事件流，交給 Docker / 收集器，不在容器內寫檔）。重點設計：
+結構化 logging 以 **stdout** 作為完整事件流，交給 Docker / 收集器保留全量脈絡；`WARNING` 以上另寫到 `backend/logs/errors/<env>-<service>.log`，作為 stage/prod 事故後可 grep 的短期保留檔。重點設計：
 
 - **格式雙軌**：`LOG_FORMAT=console`（本機可讀）/ `json`（stage/prod），預設依環境自動切。
 - **關聯 ID 串接**：每筆 log 帶 `request_id`，HTTP 與其觸發的 Celery 任務共用同一個 id，「API 請求 → 背景任務」可串成一條線追蹤。
+- **錯誤留存**：`LOG_ERROR_FILE_ENABLED=True` 時，`WARNING` 以上每日輪替並保留 `LOG_ERROR_RETENTION_DAYS` 天；Docker log 仍是查完整上下文的來源。
 - **錯誤追蹤**：設 `SENTRY_DSN` 即啟用（Django + Celery integration、不記 PII）；未設則零負擔。
 
 > → 完整欄位、formatter、request_id 串接機制、自訂結構化欄位、延遲監控見 [BACKEND.md](BACKEND.md) 的「可觀測性 / 結構化 Logging」；Celery 端 signal 見 [CELERY.md](CELERY.md)。

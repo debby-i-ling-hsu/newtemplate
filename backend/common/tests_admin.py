@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -16,7 +17,7 @@ class AdminSiteSmokeTests(TestCase):
         response = self.client.get(reverse("admin:index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "fullstackapp 後台")
+        self.assertContains(response, settings.ADMIN_SITE_TITLE)
 
     def test_example_model_changelist_renders(self) -> None:
         response = self.client.get(reverse("admin:items_item_changelist"))
