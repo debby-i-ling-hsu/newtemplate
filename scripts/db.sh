@@ -40,6 +40,7 @@ DEFAULT_KEEP="${BACKUP_KEEP:-7}"
 # exec 才會打到同一組容器。
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-newtemplate}"
 export COMPOSE_PROJECT_NAME
+EXTERNAL_NETWORK_NAME="${EXTERNAL_NETWORK_NAME:-newtemplate_net}"
 
 die() { echo "❌ $*" >&2; exit 1; }
 
@@ -63,6 +64,22 @@ compose_file() {
 }
 
 dc() { docker compose -f "$COMPOSE" "$@"; }
+
+ensure_external_network() {
+  case "$ENV" in
+    stage|prod) ;;
+    *) return 0 ;;
+  esac
+
+  if docker network inspect "$EXTERNAL_NETWORK_NAME" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "🔌 建立 Docker external network：${EXTERNAL_NETWORK_NAME}"
+  docker network create "$EXTERNAL_NETWORK_NAME" >/dev/null
+  docker network inspect "$EXTERNAL_NETWORK_NAME" >/dev/null 2>&1 \
+    || die "無法建立 Docker network：${EXTERNAL_NETWORK_NAME}"
+}
 
 ensure_db_up() {
   dc ps --status running --services 2>/dev/null | grep -qx "$DB_SERVICE" \
@@ -179,6 +196,7 @@ ENV="${2:-}"; [ -n "$ENV" ] || usage
 COMPOSE="$(compose_file "$ENV")"
 [ -f "$COMPOSE" ] || die "找不到 compose 檔: $COMPOSE"
 shift 2
+ensure_external_network
 
 case "$cmd" in
   dump)    do_dump ;;

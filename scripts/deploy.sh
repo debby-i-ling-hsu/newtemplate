@@ -28,6 +28,19 @@ network_name="newtemplate_net"
 
 env_value() { sed -n "s/^$1=//p" "$2" | tail -n 1; }
 
+ensure_external_network() {
+  if docker network inspect "$network_name" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "[deploy] 建立 Docker external network: ${network_name}"
+  docker network create "$network_name" >/dev/null
+  docker network inspect "$network_name" >/dev/null 2>&1 || {
+    echo "[deploy] 無法建立 Docker network: ${network_name}" >&2
+    exit 1
+  }
+}
+
 # ── 儲存閘門：stage/prod 一律走 Azure Blob，且 prod 與 stage 帳號必須不同 ──
 storage_backend="$(env_value DEFAULT_FILE_STORAGE "$env_file")"
 storage_account="$(env_value AZURE_ACCOUNT_NAME "$env_file")"
@@ -71,7 +84,7 @@ trap 'exit 143' TERM
 trap on_exit EXIT
 
 # ── 建置與相依服務 ──
-docker network inspect "$network_name" >/dev/null 2>&1 || docker network create "$network_name" >/dev/null
+ensure_external_network
 $compose config -q
 $compose build web worker-default beat
 $compose up -d db redis
