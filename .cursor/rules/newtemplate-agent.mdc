@@ -1,0 +1,17 @@
+---
+description: newtemplate engineering contract for Cursor
+alwaysApply: true
+---
+
+# newtemplate Agent Rules
+
+Always start by reading `AGENTS.md`. It is the normative engineering contract for this repository.
+
+Use these supporting references:
+
+- `docs/SPEC.md`: current user-visible behavior. Update it in the same change when user-visible functionality changes.
+- `docs/PRINCIPLES.md`: production safety checklist for concurrency, idempotency, security, performance, migrations, and background jobs.
+- `.agents/skills/`: canonical repo-local skill workflows.
+- `.claude/skills/`: Claude Code adapters only; do not maintain duplicate workflow logic there.
+
+Keep Web and Mobile in sync unless the user explicitly scopes the work to only one interface. Do not read or commit real env files, backups, or secrets. Do not run destructive restore/reset/deploy operations without explicit confirmation.

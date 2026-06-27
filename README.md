@@ -2,7 +2,7 @@
 
 生產級的**通用 Web + Mobile App 模板**：一條指令起站，照範例長功能，就能得到與正式產品同級的基礎設施、技術棧與目錄架構，並由內建的健康檢查、部署閘門與 CI/CD 保證穩定性。
 
-適用於**任何類型的網站與 iOS/Android App**（不綁特定業務、不含 AI 功能）。設計成讓**非工程師 PM 也能用 AI Agent（Claude / Codex 等）VibeCoding** 做出穩定系統。
+適用於**任何類型的網站與 iOS/Android App**（不綁特定業務、不含 AI 功能）。設計成讓**非工程師 PM 也能用 AI Agent（Claude / Codex / Cursor 等）VibeCoding** 做出穩定系統。
 
 ---
 
@@ -43,8 +43,9 @@ make dev-health        # 應回 {"status":"ok", ...}
 這個 repo 為 AI Agent 準備好了環境：
 
 - **[AGENTS.md](AGENTS.md)** — 所有 agent 都讀的工程契約（唯一事實來源）。
-- **[CLAUDE.md](CLAUDE.md)** — Claude Code 專屬入口。
-- **`.claude/skills/`** — 把「正確加功能 / 驗證 / 部署 / 排查」固化成可觸發的技能。
+- **[.agents/](.agents/)** — Claude / Codex / Cursor 共用的 canonical skill 目錄。
+- **[CLAUDE.md](CLAUDE.md)** 與 **`.claude/`** — Claude Code 專屬入口與 adapter。
+- **`.cursor/rules/`** — Cursor always-apply rules，指回 AGENTS 與 `.agents/skills/`。
 
 對 Agent 說「幫我加一個 X 功能」，它就會照 `items` 範例與 skill 落地，並跑必要檢查。
 
@@ -73,7 +74,9 @@ dockerfiles/  多階段 Dockerfile
 docker-compose.{dev,stage,prod}.yml
 scripts/deploy.sh  安全部署（備份→migrate→健康閘門→失敗自動回滾）
 .github/workflows/ ci.yml(CI) + deploy.yml(CD)
-.claude/   Agent 設定與 skills
+.agents/   Agent canonical skills
+.claude/   Claude Code 設定與 skill adapters
+.cursor/   Cursor rules
 docs/      架構 / PM 指南 / 部署
 ```
 

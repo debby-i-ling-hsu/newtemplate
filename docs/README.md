@@ -21,10 +21,11 @@
 ## 給 AI Agent
 
 - [../AGENTS.md](../AGENTS.md) — ★ 工程契約（唯一規範來源），任何 agent 動工前先讀。
-- [../CLAUDE.md](../CLAUDE.md) — Claude Code 專屬入口（skills、指令）。
+- [../.agents/skills](../.agents/skills) — Claude / Codex / Cursor 共用的 canonical workflow skills。
+- [../CLAUDE.md](../CLAUDE.md) — Claude Code 專屬入口（`.claude/skills/` 只是 adapter）。
 - [SPEC.md](SPEC.md) — ★ 功能規格書（單一事實來源）：動工前先讀對焦既有行為，功能改完 / 收到案主新需求要主動更新。維護規範見 AGENTS.md「功能規格書」一節。
 - [PRINCIPLES.md](PRINCIPLES.md) — ★ 生產原則鐵則 + 落地檢查清單（每加功能必讀）。
-- `.claude/skills/` — 把「加功能 / 驗證 / 部署 / 排查」固化成可觸發的技能。
+- [../.cursor/rules](../.cursor/rules) — Cursor always-apply rules，指回 AGENTS 與 `.agents/skills/`。
 
 ## 給工程師
 

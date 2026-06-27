@@ -37,6 +37,19 @@ mobile/
     features/<f>/  # ★ 一個功能一個資料夾：api/hooks/Screen/Form
 ```
 
+## Agent 環境
+
+本 repo 支援 Claude / Codex / Cursor，但工程契約只有本檔一份。
+
+- `AGENTS.md`：所有 agent 與工程師的規範來源。
+- `.agents/skills/`：Claude / Codex / Cursor 共用的 canonical skills。
+- `.claude/skills/`：Claude Code adapter，只指向 `.agents/skills/`，不要在這裡維護第二套流程。
+- `.claude/settings.json`：Claude Code 權限，禁止讀取 env 實檔與破壞性 restore/reset。
+- `.cursor/rules/`：Cursor always-apply rules，指向本檔與 `.agents/skills/`。
+- Codex：先讀本檔；需要 workflow 時以 `.agents/skills/` 作為 repo-local skill catalog。
+
+更新 Agent 流程時，先改 `.agents/skills/`，再確認 Claude/Cursor adapter 仍指向正確入口。
+
 ## 核心原則
 
 1. **後端是單一事實來源**：資料形狀、驗證、權限以後端為準；前端型別對齊後端 serializer。

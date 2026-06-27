@@ -9,6 +9,10 @@
       "Bash(npm --prefix frontend run test)",
       "Bash(npm --prefix frontend run build)",
       "Bash(npm --prefix frontend install)",
+      "Bash(npm --prefix mobile run lint)",
+      "Bash(npm --prefix mobile run typecheck)",
+      "Bash(npm --prefix mobile run test)",
+      "Bash(npm --prefix mobile install)",
       "Bash(python manage.py test:*)",
       "Bash(python manage.py check:*)",
       "Bash(python manage.py makemigrations:*)",
@@ -26,7 +30,10 @@
       "Bash(make stage-restore:*)",
       "Bash(make prod-restore:*)",
       "Bash(./scripts/db.sh restore:*)",
-      "Bash(scripts/db.sh restore:*)"
+      "Bash(scripts/db.sh restore:*)",
+      "Bash(make dev-reset:*)",
+      "Bash(make stage-reset:*)",
+      "Bash(make prod-reset:*)"
     ]
   }
 }

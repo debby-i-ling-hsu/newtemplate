@@ -14,6 +14,8 @@
 - `deploy-safely` — 部署 stage/prod 並解讀閘門。
 - `troubleshoot` — healthz 紅燈 / 容器起不來 / migration 衝突等排查。
 
+`.claude/skills/` 是 Claude Code adapter；canonical skill 內容在 `.agents/skills/`。後續更新 workflow 時，先改 `.agents/skills/`，再保持 `.claude/skills/` 指向它。
+
 ## 常用指令
 
 ```
@@ -29,7 +31,7 @@ make help           # 列出所有指令
 
 ## 注意
 
-- `.claude/settings.json` 已預先放行上述 make/test/docker 指令，並**禁止讀取** `backend/env/.env.*` 實檔（祕密）。
+- `.claude/settings.json` 已預先放行上述 make/test/docker 指令，並**禁止讀取** `backend/env/.env.*` 實檔（祕密），也禁止破壞性 restore/reset。
 - 第一次 `make dev` 會自動把 `.env.dev.example` 複製成 `.env.dev`。
 - 後端格式/lint 用 `ruff` + `black`（設定在 `backend/pyproject.toml`），需先 `make backend-venv`。
 - 新增、刪除、修改使用者可見功能時，除非使用者明確限定只改單一介面，預設要同步檢查並更新 Web (`frontend/`) 與 Mobile (`mobile/`) 介面，且回報兩邊的處理結果。
