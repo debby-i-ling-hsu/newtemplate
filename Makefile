@@ -5,6 +5,7 @@
 	backend-venv backend-check backend-test backend-fmt \
 	frontend-install frontend-lint frontend-test frontend-build \
 	mobile-install mobile-start mobile-ios mobile-android mobile-lint mobile-typecheck mobile-test mobile-check \
+	mobile-preview mobile-preview-android mobile-preview-ios-testflight \
 	check stage stage-down stage-logs stage-logs-service stage-errors stage-errors-service stage-errors-grep stage-errors-list stage-shell stage-superuser stage-health \
 	prod prod-down prod-logs prod-logs-service prod-errors prod-errors-service prod-errors-grep prod-errors-list prod-shell prod-superuser prod-health
 
@@ -17,6 +18,11 @@ COMPOSE_STAGE := docker compose -f docker-compose.stage.yml
 COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 VENV := backend/.venv
 PY := $(VENV)/bin/python
+EAS := cd mobile && npx eas-cli@latest
+MOBILE_PREVIEW_MESSAGE ?= Mobile preview build
+MOBILE_PREVIEW_ANDROID_PROFILE ?= preview
+MOBILE_PREVIEW_IOS_PROFILE ?= testflight
+MOBILE_PREVIEW_IOS_SUBMIT_PROFILE ?= testflight
 
 # 備份 / 還原旗標（裸字目標 ANY / YES，靠 MAKECMDGOALS 偵測後轉成 scripts/db.sh 旗標）：
 #   make <env>-dump                  備份 <env> DB → backups/<env>_<時間>.sql.gz
@@ -141,6 +147,15 @@ mobile-test: ## Mobile Jest 測試
 	npm --prefix mobile run test
 
 mobile-check: mobile-lint mobile-typecheck mobile-test ## 跑 mobile 最小檢查
+
+mobile-preview-android: ## 送出 Android preview APK build（EAS internal distribution）
+	$(EAS) build --profile "$(MOBILE_PREVIEW_ANDROID_PROFILE)" --platform android --message "$(MOBILE_PREVIEW_MESSAGE)" --no-wait
+
+mobile-preview-ios-testflight: ## 送出 iOS TestFlight build 並自動 submit
+	$(EAS) build --profile "$(MOBILE_PREVIEW_IOS_PROFILE)" --platform ios --auto-submit-with-profile "$(MOBILE_PREVIEW_IOS_SUBMIT_PROFILE)" --message "$(MOBILE_PREVIEW_MESSAGE)" --no-wait
+
+mobile-preview: mobile-check ## 同時送出 Android preview APK 與 iOS TestFlight
+	@$(MAKE) -j2 mobile-preview-android mobile-preview-ios-testflight MOBILE_PREVIEW_MESSAGE="$(MOBILE_PREVIEW_MESSAGE)"
 
 check: backend-check backend-test frontend-lint frontend-test frontend-build mobile-check ## 跑所有檢查（CI 等價）
 

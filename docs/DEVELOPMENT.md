@@ -212,6 +212,7 @@ pre-commit run --all-files                       # 手動對全 repo 跑
 | `make frontend-install` / `frontend-lint` / `frontend-test` / `frontend-build` | 前端依賴 / lint / test / build |
 | `make mobile-install` / `mobile-start` / `mobile-ios` / `mobile-android` | mobile 依賴 / Expo / iOS / Android |
 | `make mobile-lint` / `mobile-typecheck` / `mobile-test` / `mobile-check` | mobile lint / typecheck / test / 三合一 |
+| `make mobile-preview` | 跑 mobile-check 後，同時送出 Android preview APK 與 iOS TestFlight |
 | `make check` | **跑所有檢查（= CI）**：backend-check + backend-test + frontend(lint/test/build) + mobile-check |
 
 ### 部署與資料

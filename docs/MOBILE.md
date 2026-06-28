@@ -144,8 +144,9 @@ npx --prefix mobile eas build --profile development --platform android
 正式 binary 走 EAS Build：
 
 ```bash
+make mobile-preview
 npx --prefix mobile eas build --profile production --platform ios
 npx --prefix mobile eas build --profile production --platform android
 ```
 
-`eas.json` 已提供 `development`、`preview`、`production` profile。App Store / Play Store submit 需要專案自己的 bundle id、package name 與簽章設定；模板預設值只是 placeholder。
+`make mobile-preview` 會先跑 mobile 檢查，再同時送出 Android preview APK 與 iOS TestFlight build。`eas.json` 已提供 `development`、`preview`、`testflight`、`production` profile 作為範例；App Store / Play Store submit 需要專案自己的 bundle id、package name、EAS project、profile 與簽章設定，模板預設值只是 placeholder。

@@ -11,11 +11,18 @@
     "preview": {
       "distribution": "internal"
     },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true
+    },
     "production": {
       "autoIncrement": true
     }
   },
   "submit": {
+    "testflight": {
+      "ios": {}
+    },
     "production": {}
   }
 }
